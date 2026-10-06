@@ -14,7 +14,7 @@ This is a practice implementation, not a claim of contest-time eligibility. Depl
 
 ## Run and build
 
-Use Node.js **22.13+ on the 22.x line, 24.x, or 26+**, and npm. Verified locally with Node 26.7.0 and Chrome.
+Use Node.js **22.22+ on the 22.x line, 24.x, or 26+**, and npm. Verified locally with Node 26.7.0 and Chrome.
 
 ```sh
 npm ci
@@ -30,7 +30,7 @@ On Windows, Node must be on your terminal's PATH. Reopen the terminal after inst
 ## Prepare a package
 
 1. Import a `requirements.json` file, or click **Load sample pack**.
-2. Upload your PDFs together. The app accepts up to **30 files / 50 MiB total** and lists page counts. Remove unwanted files with the SVG trash control.
+2. Open **Documents** and upload your PDFs together. The app accepts up to **30 files / 50 MiB total** and lists page counts. Remove unwanted files with the SVG trash control.
 3. Select a PDF for each requirement. A file and identical content can serve only one requirement. Duplicate uploaded files remain visible and flagged.
 4. Enter expiry dates where requested. The app compares them against the tender's submission deadline; expiry on the deadline is valid.
 5. Resolve every **Missing**, **Expiry date needed**, and **Expired** status. **Not provided** applies to unmatched optional requirements and does not block generation.
@@ -63,7 +63,7 @@ The cover stays in English and includes all required tender fields, the date in 
 Load the sample, open **Project tools**, and choose **Use checked sample matches**. This helper verifies the original requirements and expected sample file hashes. It uses the 2026 trade license (expiry `2027-06-30`), the bank certificate (expiry `2026-12-31`), one experience certificate, and `scan_0042.pdf` as the signed declaration. The older license and duplicate stay unmatched. The two absent optional documents are skipped.
 
 - [`output/T-2026-0417_Package.pdf`](output/T-2026-0417_Package.pdf): **17 pages** with the default English index, no added seal. Turning the index off produces **16 pages**.
-- [`screenshots/`](screenshots/): English and Bangla document statuses, package preview, Bangla PDF index and mobile dashboard.
+- [`screenshots/`](screenshots/): separate Overview and Documents screens in English and Bangla, package preview, Bangla PDF index and mobile layouts.
 - [`docs/AI_PROMPTS.md`](docs/AI_PROMPTS.md): original prompt and feature-stage instructions.
 
 ## Verification
@@ -74,7 +74,7 @@ npm run build
 npm run test:e2e
 ```
 
-The 42 unit tests cover validation, expiry boundaries, duplicate assignments, PDF errors, size limits, PDF order/rotation, project round-trip, CSV, suggestions, PNG/index generation and optional AI behavior. The production Chrome checks exercise the UI, verify every sample footer and original document text/page sequence, and capture the output/screenshot artifacts. AI requests are intercepted with success/failure responses during verification; no real API key is used. Real AI availability depends on your key, model, quota and network.
+The 42 unit tests cover validation, expiry boundaries, duplicate assignments, PDF errors, size limits, PDF order/rotation, project round-trip, CSV, suggestions, PNG/index generation and optional AI behavior. The production Chrome checks exercise the UI, verify every sample footer and original document text/page sequence, and capture the output/screenshot artifacts. They also check route separation, issue links, keyboard focus, browser back/forward, shared project state and direct route reloads. AI requests are intercepted with success/failure responses during verification; no real API key is used. Real AI availability depends on your key, model, quota and network.
 
 `npm run test:e2e` requires installed Google Chrome. It starts a temporary Vite preview at `127.0.0.1:4173`, then stops it. Set `VERIFY_BASE_URL` only when using your own existing preview server. Temporary downloads are ignored under `.test-results/`.
 
@@ -86,7 +86,7 @@ The 42 unit tests cover validation, expiry boundaries, duplicate assignments, PD
 4. Deploy the final commit without adding a backend or API-key environment variable.
 5. Keep the public HTTPS live URL above updated if the deployment address changes.
 
-The dashboard uses internal views instead of URL routes, so no SPA route rewrite is required. Deployment is managed by the participant. See [Vite's static deployment guide](https://vite.dev/guide/static-deploy.html).
+The dashboard uses separate `/overview`, `/documents`, `/package`, and `/tools` routes. Overview shows the tender summary and readiness; Documents contains uploads, matching, expiry dates and previews. Project state is shared across navigation. The included `vercel.json` rewrites direct route requests to `index.html`, so refreshing or opening a bookmarked page works on Vercel. A full reload still requires reopening an exported project to restore files. Deployment is managed by the participant. See [Vite's static deployment guide](https://vite.dev/guide/static-deploy.html).
 
 ## Known limitations
 

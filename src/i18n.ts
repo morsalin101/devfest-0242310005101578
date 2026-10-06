@@ -1,5 +1,21 @@
 import type { Language } from "./types";
 const en = {
+  overviewHeading: "Tender overview",
+  overviewSubtitle: "Track submission readiness and see what needs attention.",
+  documentsHeading: "Document workspace",
+  documentsSubtitle:
+    "Upload PDFs, match each requirement, and check expiry dates.",
+  manageDocuments: "Manage documents",
+  reviewDocuments: "Review documents",
+  overviewAttentionHelp:
+    "Open an issue to resolve it in the document checklist.",
+  checklistComplete: "Your checklist is complete",
+  nextSteps: "Prepare your submission",
+  nextStepsHelp: "Complete the checklist before generating your package.",
+  changeRequirements: "Change requirements",
+  reviewChecklist: "Match and check documents",
+  viewPackage: "View package",
+
   confirmProject: "Replace the current project with the saved project?",
   app: "TenderDesk",
   workspace: "Document workspace",
@@ -167,6 +183,22 @@ const en = {
   loadingPreview: "Rendering preview…",
 };
 const bn: typeof en = {
+  overviewHeading: "টেন্ডারের সারসংক্ষেপ",
+  overviewSubtitle:
+    "জমা দেওয়ার প্রস্তুতি ও সমাধান প্রয়োজন এমন সমস্যাগুলো দেখুন।",
+  documentsHeading: "নথির কর্মক্ষেত্র",
+  documentsSubtitle:
+    "পিডিএফ আপলোড করুন, নথির সঙ্গে মিলিয়ে দিন এবং মেয়াদের তারিখ পরীক্ষা করুন।",
+  manageDocuments: "নথি পরিচালনা করুন",
+  reviewDocuments: "নথি যাচাই করুন",
+  overviewAttentionHelp: "চেকলিস্টে সমাধান করতে একটি সমস্যা খুলুন।",
+  checklistComplete: "আপনার চেকলিস্ট সম্পূর্ণ",
+  nextSteps: "জমা দেওয়ার প্রস্তুতি নিন",
+  nextStepsHelp: "প্যাকেজ তৈরির আগে চেকলিস্ট সম্পূর্ণ করুন।",
+  changeRequirements: "চাহিদাপত্র বদলান",
+  reviewChecklist: "নথি মিলিয়ে যাচাই করুন",
+  viewPackage: "প্যাকেজ দেখুন",
+
   confirmProject: "সংরক্ষিত প্রকল্প দিয়ে বর্তমান প্রকল্প বদলাবেন?",
   app: "টেন্ডারডেস্ক",
   workspace: "নথির কর্মক্ষেত্র",

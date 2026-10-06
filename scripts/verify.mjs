@@ -86,20 +86,51 @@ try {
   page.on("pageerror", (error) => failures.push(error.message));
   page.on("dialog", (dialog) => dialog.accept());
   await page.goto(base);
+  await expect(page).toHaveURL(`${base}/overview`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Tender overview",
+  );
+  await expect(page.locator("table, .file-list, canvas")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Generate package", exact: true }),
   ).toBeDisabled();
-  await page
-    .locator('input[aria-label="Import requirements"]')
-    .setInputFiles({
-      name: "invalid.json",
-      mimeType: "application/json",
-      buffer: Buffer.from("{}"),
-    });
+  await page.locator('input[aria-label="Import requirements"]').setInputFiles({
+    name: "invalid.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("{}"),
+  });
   await expect(page.getByRole("alert")).toContainText(
     "Invalid requirements JSON",
   );
   await loadSample(page);
+  await expect(page).toHaveURL(`${base}/overview`);
+  await expect(page.locator(".overview-issues li")).toHaveCount(8);
+  await expect(page.locator(".tender-card")).toContainText("T-2026-0417");
+  await expect(page.locator("table, .file-list, canvas")).toHaveCount(0);
+  await page.screenshot({
+    path: "screenshots/overview-english.png",
+    fullPage: true,
+  });
+  await page
+    .locator('.overview-issues a[href="/documents#requirement-R01"]')
+    .click();
+  await expect(page).toHaveURL(`${base}/documents#requirement-R01`);
+  await expect(page.locator('[data-requirement="R01"]')).toBeFocused();
+  await expect(
+    page.locator(".stats, .tender-card, .overview-page"),
+  ).toHaveCount(0);
+  await expect(page.locator(".document-context")).toContainText("2026-10-20");
+  await page.goBack();
+  await expect(page).toHaveURL(`${base}/overview`);
+  await expect(page.locator(".overview-issues li")).toHaveCount(8);
+  await page.goForward();
+  await expect(page).toHaveURL(`${base}/documents#requirement-R01`);
+  await expect(
+    page.getByRole("link", { name: "Documents", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  report(
+    "distinct Overview/Documents routes, tender context, blocker deep-link focus and browser history",
+  );
   await expect(page.locator("tbody tr")).toHaveCount(10);
   await expect(page.locator(".file-item")).toHaveCount(10);
   await expect(page.locator(".status.missing")).toHaveCount(8);
@@ -151,15 +182,41 @@ try {
   await expect(page.locator('[data-requirement="R02"] .status')).toHaveText(
     "OK",
   );
-  await page
-    .getByRole("button", { name: "Project tools", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Project tools", exact: true }).click();
   await page
     .getByRole("button", { name: "Use checked sample matches", exact: true })
     .click();
   await expect(page.locator(".status.ok")).toHaveCount(8);
   await expect(page.locator(".status.notProvided")).toHaveCount(2);
   const tradeDate = page.locator('[data-requirement="R01"] input');
+  await tradeDate.fill("");
+  await expect(page.locator('[data-requirement="R01"] .status')).toHaveText(
+    "Expiry date needed",
+  );
+  await expect(page.locator(".blocker-list")).toContainText(
+    "Trade License: Expiry date needed",
+  );
+  await expect(
+    page.getByRole("button", { name: "Generate package", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await expect(page.locator(".overview-issues li")).toHaveCount(1);
+  await expect(page.locator(".overview-issues li")).toContainText(
+    "Expiry date needed",
+  );
+  await expect(
+    page.getByRole("button", { name: "Generate package", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("link", { name: "Package preview", exact: true })
+    .click();
+  await expect(page.locator(".blocker-list")).toContainText(
+    "Trade License: Expiry date needed",
+  );
+  await expect(
+    page.getByRole("button", { name: "Generate package", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("link", { name: "Documents", exact: true }).click();
   await tradeDate.fill("2026-10-19");
   await expect(page.locator('[data-requirement="R01"] .status')).toHaveText(
     "Expired",
@@ -172,6 +229,36 @@ try {
     "OK",
   );
   await tradeDate.fill("2027-06-30");
+  const originalMatch = await page
+    .locator('[data-requirement="R01"] select')
+    .inputValue();
+  await page
+    .getByRole("button", {
+      name: "Preview trade_license_2026.pdf",
+      exact: true,
+    })
+    .click();
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await expect(page.locator(".overview-ready")).toBeVisible();
+  await expect(page.locator(".stat-card strong").nth(1)).toHaveText("8");
+  await page
+    .getByRole("link", { name: "Package preview", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Project tools", exact: true }).click();
+  await page.getByRole("link", { name: "Documents", exact: true }).click();
+  await expect(page.locator(".file-item")).toHaveCount(10);
+  await expect(page.locator('[data-requirement="R01"] input')).toHaveValue(
+    "2027-06-30",
+  );
+  await expect(page.locator('[data-requirement="R01"] select')).toHaveValue(
+    originalMatch,
+  );
+  await expect(page.locator(".preview-name")).toHaveText(
+    "trade_license_2026.pdf",
+  );
+  report(
+    "files, assignments, expiry dates and selected preview persist across all four routes",
+  );
   await page
     .locator('[data-requirement="R06"] select')
     .selectOption({ label: "experience_cert (1).pdf" });
@@ -187,6 +274,11 @@ try {
   if (await page.locator(".notice button").count())
     await page.locator(".notice button").click();
   await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(
+    () =>
+      document.querySelector("canvas")?.dataset.renderedPage === "1" &&
+      !document.querySelector(".rendering"),
+  );
   await page.screenshot({
     path: "screenshots/statuses-english.png",
     fullPage: true,
@@ -324,9 +416,7 @@ try {
     "16-page mode, stale download prevention, SVG controls and preview-based PNG placement",
   );
 
-  await page
-    .getByRole("button", { name: "Project tools", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Project tools", exact: true }).click();
   await page
     .getByLabel("Your Gemini API key", { exact: true })
     .fill("verification-placeholder-not-a-secret");
@@ -360,11 +450,9 @@ try {
       )
   )
     throw Error("CSV contents");
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page.getByRole("link", { name: "Documents", exact: true }).click();
   await page.locator('[data-requirement="R02"] select').selectOption("");
-  await page
-    .getByRole("button", { name: "Project tools", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Project tools", exact: true }).click();
   let sent;
   await page.route(
     "https://generativelanguage.googleapis.com/**",
@@ -420,19 +508,17 @@ try {
   await expect(page.getByRole("alert")).toContainText(
     "AI suggestions are unavailable",
   );
-  await page
-    .locator('input[aria-label="Reopen project"]')
-    .setInputFiles({
-      name: "invalid-project.json",
-      mimeType: "application/json",
-      buffer: Buffer.from("{}"),
-    });
+  await page.locator('input[aria-label="Reopen project"]').setInputFiles({
+    name: "invalid-project.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("{}"),
+  });
   await expect(page.getByRole("alert")).toContainText("Invalid project file");
   await page
     .locator('input[aria-label="Reopen project"]')
     .setInputFiles(".test-results/sample.tender-project.json");
   await page.getByText("Project restored.", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page.getByRole("link", { name: "Documents", exact: true }).click();
   await expect(page.locator(".status.ok")).toHaveCount(8);
   report(
     "CSV export, project round-trip, invalid project isolation, memory-only key and AI success/failure with metadata-only mocked requests",
@@ -443,6 +529,32 @@ try {
     .click();
   await page.getByText("ট্রেড লাইসেন্স", { exact: true }).waitFor();
   await expect(page.locator(".status.ok")).toHaveText(Array(8).fill("ঠিক আছে"));
+  await expect(page).toHaveURL(`${base}/documents`);
+  await page.getByRole("link", { name: "সারসংক্ষেপ", exact: true }).click();
+  await expect(page.locator("main h1")).toHaveText("টেন্ডারের সারসংক্ষেপ");
+  await page.screenshot({
+    path: "screenshots/overview-bangla.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  if (
+    !(await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ))
+  )
+    throw Error("Overview mobile overflow");
+  await page.screenshot({
+    path: "screenshots/mobile-overview.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 1080 });
+  await page.getByRole("link", { name: "নথিপত্র", exact: true }).click();
+  await expect(page.locator(".status.ok")).toHaveCount(8);
+  await page.waitForFunction(
+    () =>
+      document.querySelector("canvas")?.dataset.renderedPage === "1" &&
+      !document.querySelector(".rendering"),
+  );
   await page.screenshot({
     path: "screenshots/statuses-bangla.png",
     fullPage: true,
@@ -480,7 +592,7 @@ try {
     path: "screenshots/index-bangla.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "সারসংক্ষেপ", exact: true }).click();
+  await page.getByRole("link", { name: "নথিপত্র", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   if (
     !(await page.evaluate(
@@ -488,6 +600,11 @@ try {
     ))
   )
     throw Error("Mobile horizontal overflow");
+  await page.waitForFunction(
+    () =>
+      document.querySelector("canvas")?.dataset.renderedPage === "1" &&
+      !document.querySelector(".rendering"),
+  );
   await page.screenshot({
     path: "screenshots/mobile-dashboard.png",
     fullPage: true,
@@ -503,7 +620,11 @@ try {
   await page.reload();
   await page.waitForFunction(() => document.documentElement.lang === "bn");
   await page.keyboard.press("Tab");
-  if (!(await page.evaluate(() => document.activeElement?.tagName === "A")))
+  if (
+    !(await page.evaluate(() =>
+      ["A", "BUTTON", "INPUT"].includes(document.activeElement?.tagName),
+    ))
+  )
     throw Error("Keyboard navigation unavailable");
   report(
     "Bangla UI/PDF index, English cover, remembered language, mobile layout, 200% text and keyboard access",
@@ -511,17 +632,15 @@ try {
 
   const capacity = await browser.newPage();
   capacity.on("pageerror", (error) => failures.push(error.message));
-  await capacity.goto(base);
+  await capacity.goto(`${base}/documents`);
   const source = await readFile(asset("trade_license_2026.pdf"));
-  await capacity
-    .locator('input[aria-label="Upload PDFs"]')
-    .setInputFiles(
-      Array.from({ length: 31 }, (_, i) => ({
-        name: `copy-${i}.pdf`,
-        mimeType: "application/pdf",
-        buffer: source,
-      })),
-    );
+  await capacity.locator('input[aria-label="Upload PDFs"]').setInputFiles(
+    Array.from({ length: 31 }, (_, i) => ({
+      name: `copy-${i}.pdf`,
+      mimeType: "application/pdf",
+      buffer: source,
+    })),
+  );
   await expect(capacity.locator(".file-item")).toHaveCount(30);
   await expect(capacity.getByRole("alert")).toContainText("30 PDF files");
   await capacity
@@ -530,7 +649,7 @@ try {
   await expect(capacity.locator(".file-item")).toHaveCount(29);
   await capacity.close();
   const large = await browser.newPage();
-  await large.goto(base);
+  await large.goto(`${base}/documents`);
   await large.evaluate(() => {
     const input = document.querySelector('input[aria-label="Upload PDFs"]');
     const transfer = new DataTransfer();
@@ -546,6 +665,25 @@ try {
   await expect(large.locator(".file-item")).toHaveCount(0);
   await large.close();
   report("30-file upload boundary, removal and oversized PDF rejection");
+  const direct = await browser.newPage();
+  direct.on("pageerror", (error) => failures.push(error.message));
+  for (const [path, heading] of [
+    ["overview", "Tender overview"],
+    ["documents", "Document workspace"],
+    ["package", "Package preview"],
+    ["tools", "Project tools"],
+  ]) {
+    const response = await direct.goto(`${base}/${path}`);
+    if (response.status() !== 200) throw Error(`Direct route ${path} failed`);
+    await expect(direct.getByRole("heading", { level: 1 })).toHaveText(heading);
+    await direct.reload();
+    await expect(direct).toHaveURL(`${base}/${path}`);
+    await expect(direct.getByRole("heading", { level: 1 })).toHaveText(heading);
+  }
+  await direct.goto(`${base}/unknown`);
+  await expect(direct).toHaveURL(`${base}/overview`);
+  await direct.close();
+  report("direct links and refresh on all routes, plus unknown-route fallback");
   if (failures.length) throw Error(failures.join("\n"));
   console.log(
     "All Chrome production checks passed. Artifacts saved in output/ and screenshots/.",

@@ -23,3 +23,12 @@ Use React, Vite, TypeScript and CSS. Process documents entirely in the browser. 
 ## History note
 
 An additional `Create bonus.ts` commit was created and pushed outside the coding agent’s commands between feature stages two and three. It was preserved; no pushed history was rewritten.
+
+
+## Follow-up UX request (verbatim)
+
+seperate it so that user could experience better UX
+
+make sure it doesnot conflict with requirements
+
+Implemented separate Overview and Documents components and browser routes with shared project state. Retained tender context, all statuses, validation and generation blockers; verified the supplied PDFs, bilingual workflows and production Chrome checks. Existing Git history is preserved.

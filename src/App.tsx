@@ -1,4 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  Link,
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router";
+import OverviewPage from "./pages/OverviewPage";
+import DocumentsPage from "./pages/DocumentsPage";
 import type { ChangeEvent } from "react";
 import type {
   Language,
@@ -66,14 +77,12 @@ export default function App() {
   const [notices, setNotices] = useState<
     { key: MessageKey; detail?: string; error?: boolean }[]
   >([]);
-  const [active, setActive] = useState<
-    "workspace" | "documents" | "package" | "tools"
-  >("workspace");
+  const location = useLocation();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<string>();
   const [previewPage, setPreviewPage] = useState(1);
   const requirementsInput = useRef<HTMLInputElement>(null);
   const filesInput = useRef<HTMLInputElement>(null);
-  const selectedFile = files.find((f) => f.id === selected);
   useEffect(() => {
     document.documentElement.lang = language;
     try {
@@ -242,7 +251,7 @@ export default function App() {
         setGenerated(result);
         setStale(false);
         setPackagePage(1);
-        setActive("package");
+        navigate("/package");
         notice("generated");
       } catch {
         notice("generationError", undefined, true);
@@ -400,7 +409,7 @@ export default function App() {
       setSuggestions([]);
       setStale(true);
       notice("resolved");
-      setActive("workspace");
+      navigate("/documents");
     });
   }
   const suggestionPanel = suggestions.length > 0 && (
@@ -444,22 +453,64 @@ export default function App() {
     </section>
   );
   const nav = [
-    { id: "workspace", key: "overview", icon: "grid" },
-    { id: "documents", key: "documents", icon: "file" },
-    { id: "package", key: "package", icon: "package" },
-    { id: "tools", key: "tools", icon: "tools" },
+    {
+      path: "/overview",
+      key: "overview",
+      icon: "grid",
+      heading: "overviewHeading",
+      subtitle: "overviewSubtitle",
+    },
+    {
+      path: "/documents",
+      key: "documents",
+      icon: "file",
+      heading: "documentsHeading",
+      subtitle: "documentsSubtitle",
+    },
+    {
+      path: "/package",
+      key: "package",
+      icon: "package",
+      heading: "package",
+      subtitle: "packageHelp",
+    },
+    {
+      path: "/tools",
+      key: "tools",
+      icon: "tools",
+      heading: "tools",
+      subtitle: "projectHelp",
+    },
   ] as const;
+  const currentPage =
+    nav.find((n) => n.path === location.pathname.replace(/\/$/, "")) || nav[0];
+  useEffect(() => {
+    document.title = `${t(currentPage.key)} · TenderDesk`;
+  }, [currentPage.key, language]);
+  useEffect(() => {
+    let target: HTMLElement | null = null;
+    try {
+      if (location.hash)
+        target = document.getElementById(
+          decodeURIComponent(location.hash.slice(1)),
+        );
+    } catch {
+      /* Ignore invalid URL fragments. */
+    }
+    if (target) {
+      target.scrollIntoView({ block: "center" });
+      target.focus({ preventScroll: true });
+    } else {
+      window.scrollTo(0, 0);
+      document
+        .querySelector<HTMLElement>("main h1")
+        ?.focus({ preventScroll: true });
+    }
+  }, [location.pathname, location.hash]);
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a
-          className="brand"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            setActive("workspace");
-          }}
-        >
+        <Link className="brand" to="/overview">
           <span className="brand-mark">
             <Icon name="file" size={25} />
           </span>
@@ -467,22 +518,24 @@ export default function App() {
             Tender<span className="brand-light">Desk</span>
             <small>{t("workspace")}</small>
           </span>
-        </a>
+        </Link>
         <div className="sidebar-label">{t("eyebrow")}</div>
         <nav aria-label={t("navLabel")}>
           {nav.map((item) => (
-            <button
-              key={item.id}
-              className={`nav-item ${active === item.id ? "active" : ""}`}
-              aria-current={active === item.id ? "page" : undefined}
-              onClick={() => setActive(item.id)}
+            <NavLink
+              key={item.path}
+              to={item.path}
+              aria-label={t(item.key)}
+              className={({ isActive }) =>
+                `nav-item ${isActive ? "active" : ""}`
+              }
             >
               <Icon name={item.icon} />
               <span>{t(item.key)}</span>
-              {item.id === "documents" && files.length > 0 && (
+              {item.path === "/documents" && files.length > 0 && (
                 <span className="nav-count">{files.length}</span>
               )}
-            </button>
+            </NavLink>
           ))}
         </nav>
         <div className="sidebar-bottom">
@@ -505,7 +558,7 @@ export default function App() {
           <div className="breadcrumb">
             {t("workspace")}
             <Icon name="chevron" size={14} />
-            <strong>{t(nav.find((n) => n.id === active)!.key)}</strong>
+            <strong>{t(currentPage.key)}</strong>
           </div>
           <button
             className="language-button"
@@ -523,10 +576,26 @@ export default function App() {
           <section className="heading">
             <div>
               <div className="eyebrow">{t("eyebrow")}</div>
-              <h1>{t("heading")}</h1>
-              <p>{t("subtitle")}</p>
+              <h1 tabIndex={-1}>{t(currentPage.heading)}</h1>
+              <p>{t(currentPage.subtitle)}</p>
             </div>
             <div className="heading-actions">
+              {currentPage.path === "/overview" && (
+                <Link className="button primary" to="/documents">
+                  <Icon name="file" size={17} />
+                  {t("manageDocuments")}
+                </Link>
+              )}
+              {currentPage.path === "/documents" && (
+                <button
+                  className="button primary"
+                  disabled={busy}
+                  onClick={() => filesInput.current?.click()}
+                >
+                  <Icon name="upload" size={17} />
+                  {t("upload")}
+                </button>
+              )}
               <button
                 className="button secondary"
                 disabled={busy}
@@ -536,7 +605,7 @@ export default function App() {
                 {t("import")}
               </button>
               <button
-                className="button primary"
+                className="button secondary"
                 disabled={busy}
                 onClick={loadSample}
               >
@@ -608,600 +677,353 @@ export default function App() {
               {t("processing")}
             </div>
           )}
-          <section className="stats" aria-label={t("overview")}>
-            {[
-              {
-                key: "total",
-                value: data?.requirements.length || 0,
-                icon: "file",
-                color: "blue",
-              },
-              { key: "ready", value: ready, icon: "check", color: "green" },
-              {
-                key: "issues",
-                value: blocking,
-                icon: "alert",
-                color: "orange",
-              },
-              {
-                key: "pageCount",
-                value: totalPages,
-                icon: "package",
-                color: "purple",
-              },
-            ].map((s) => (
-              <div className="stat-card" key={s.key}>
-                <div>
-                  <span>{t(s.key as MessageKey)}</span>
-                  <strong>
-                    {s.value.toLocaleString(
-                      language === "bn" ? "bn-BD" : "en-US",
-                    )}
-                  </strong>
-                </div>
-                <span className={`stat-icon ${s.color}`}>
-                  <Icon name={s.icon as "file"} />
-                </span>
-              </div>
-            ))}
-          </section>
-          {data && (
-            <section className="tender-card">
-              <div className="tender-title">
-                <span className="mini-label">{t("tender")}</span>
-                <h2>{data.tender.title}</h2>
-                <span className="tender-id">{data.tender.tender_id}</span>
-              </div>
-              <dl>
-                <div>
-                  <dt>{t("bidder")}</dt>
-                  <dd>{data.tender.bidder}</dd>
-                </div>
-                <div>
-                  <dt>{t("entity")}</dt>
-                  <dd>{data.tender.procuring_entity}</dd>
-                </div>
-                <div>
-                  <dt>{t("deadline")}</dt>
-                  <dd className="deadline">
-                    {data.tender.submission_deadline}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-          )}
-          {active === "package" ? (
-            <div className="package-layout">
-              <section className="panel">
-                <div className="panel-header">
-                  <div>
-                    <h2>{t("package")}</h2>
-                    <p>{t("packageHelp")}</p>
-                  </div>
-                  <span className="count-badge">
-                    {generated?.pages || 0} {t("pages")}
-                  </span>
-                </div>
-                <div className="controls">
-                  <button
-                    className="button primary"
-                    disabled={!generated || stale || busy}
-                    onClick={downloadPackage}
-                  >
-                    <Icon name="download" size={17} />
-                    {t("download")}
-                  </button>
-                  <button
-                    className="button secondary"
-                    disabled={!data || blocking > 0 || busy}
-                    onClick={generate}
-                  >
-                    <Icon name="package" size={17} />
-                    {t("generate")}
-                  </button>
-                  {stale && generated && (
-                    <p className="stale-warning">{t("regenerate")}</p>
-                  )}
-                </div>
-                <div className="package-output">
-                  <Preview
-                    bytes={generated?.previewBytes}
-                    language={language}
-                    page={packagePage}
-                    onPage={setPackagePage}
-                    stamp={stamp}
-                    pageKey={generated?.pageKeys[packagePage - 1]}
-                    onPlace={stamp && !busy ? placeStamp : undefined}
-                  />
-                </div>
-              </section>
-              <div className="workspace-side">
-                <section className="panel tool-card">
-                  <h2>{t("settings")}</h2>
-                  <label className="option-label">
-                    <input
-                      type="checkbox"
-                      checked={includeIndex}
-                      disabled={busy}
-                      onChange={(e) => {
-                        setIncludeIndex(e.target.checked);
-                        setStale(true);
-                      }}
-                    />
-                    {t("index")}
-                  </label>
-                  <small>{t("indexHelp")}</small>
-                  <p>
-                    {t(
-                      !data
-                        ? "importFirst"
-                        : blocking
-                          ? "blockers"
-                          : "readyHelp",
-                    )}
-                  </p>
-                </section>
-                <section className="panel tool-card">
-                  <h2>{t("seal")}</h2>
-                  <p>{t("sealHelp")}</p>
-                  <button
-                    className="button secondary wide"
-                    disabled={busy}
-                    onClick={() => stampInput.current?.click()}
-                  >
-                    <Icon name="upload" size={17} />
-                    {t("uploadSeal")}
-                  </button>
-                  {stamp && (
-                    <>
-                      <small>{stamp.name}</small>
-                      <label htmlFor="seal-width">
-                        {t("sealWidth")}: {Math.round(stampWidth * 100)}%
-                      </label>
-                      <input
-                        id="seal-width"
-                        type="range"
-                        min=".05"
-                        max=".6"
-                        step=".01"
-                        value={stampWidth}
-                        disabled={busy}
-                        onChange={(e) => setStampWidth(Number(e.target.value))}
+          <Routes>
+            <Route path="/" element={<Navigate to="/overview" replace />} />
+            <Route
+              path="/overview"
+              element={
+                <OverviewPage
+                  data={data}
+                  language={language}
+                  ready={ready}
+                  blocking={blocking}
+                  totalPages={totalPages}
+                  progress={progress}
+                  blockers={blockers}
+                  fileCount={files.length}
+                  busy={busy}
+                  hasPackage={Boolean(generated)}
+                  onGenerate={generate}
+                  onOpenRequirements={() => requirementsInput.current?.click()}
+                />
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                <DocumentsPage
+                  data={data}
+                  language={language}
+                  files={files}
+                  rows={rows}
+                  assignments={assignments}
+                  expiries={expiries}
+                  busy={busy}
+                  selected={selected}
+                  previewPage={previewPage}
+                  progress={progress}
+                  blockers={blockers}
+                  suggestionPanel={suggestionPanel}
+                  onOpenRequirements={() => requirementsInput.current?.click()}
+                  onOpenUpload={() => filesInput.current?.click()}
+                  onSuggest={suggest}
+                  onMatch={match}
+                  onExpiry={(id, date) => {
+                    setExpiries({ ...expiries, [id]: date });
+                    setStale(true);
+                  }}
+                  onSelect={(id) => {
+                    setSelected(id);
+                    setPreviewPage(1);
+                  }}
+                  onRemove={removeFile}
+                  onUpload={upload}
+                  onGenerate={generate}
+                  onPreviewPage={setPreviewPage}
+                />
+              }
+            />
+            <Route
+              path="/package"
+              element={
+                <div className="package-layout">
+                  <section className="panel">
+                    <div className="panel-header">
+                      <div>
+                        <h2>{t("package")}</h2>
+                        <p>{t("packageHelp")}</p>
+                      </div>
+                      <span className="count-badge">
+                        {generated?.pages || 0} {t("pages")}
+                      </span>
+                    </div>
+                    <div className="controls">
+                      <button
+                        className="button primary"
+                        disabled={!generated || stale || busy}
+                        onClick={downloadPackage}
+                      >
+                        <Icon name="download" size={17} />
+                        {t("download")}
+                      </button>
+                      <button
+                        className="button secondary"
+                        disabled={!data || blocking > 0 || busy}
+                        onClick={generate}
+                      >
+                        <Icon name="package" size={17} />
+                        {t("generate")}
+                      </button>
+                      {stale && generated && (
+                        <p className="stale-warning">{t("regenerate")}</p>
+                      )}
+                    </div>
+                    <div className="package-output">
+                      <Preview
+                        bytes={generated?.previewBytes}
+                        language={language}
+                        page={packagePage}
+                        onPage={setPackagePage}
+                        stamp={stamp}
+                        pageKey={generated?.pageKeys[packagePage - 1]}
+                        onPlace={stamp && !busy ? placeStamp : undefined}
                       />
+                    </div>
+                  </section>
+                  <div className="workspace-side">
+                    <section className="panel tool-card">
+                      <h2>{t("settings")}</h2>
+                      <label className="option-label">
+                        <input
+                          type="checkbox"
+                          checked={includeIndex}
+                          disabled={busy}
+                          onChange={(e) => {
+                            setIncludeIndex(e.target.checked);
+                            setStale(true);
+                          }}
+                        />
+                        {t("index")}
+                      </label>
+                      <small>{t("indexHelp")}</small>
+                      <p>
+                        {t(
+                          !data
+                            ? "importFirst"
+                            : blocking
+                              ? "blockers"
+                              : "readyHelp",
+                        )}
+                      </p>
+                    </section>
+                    {blocking > 0 && (
+                      <section className="panel tool-card">
+                        <h2>{t("attention")}</h2>
+                        <ul className="blocker-list">
+                          {blockers.map(({ requirement: r, status }) => (
+                            <li key={r.id}>
+                              <Link
+                                to={`/documents#requirement-${encodeURIComponent(r.id)}`}
+                              >
+                                {language === "en" ? r.title_en : r.title_bn}:{" "}
+                                {t(status)}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    )}
+                    <section className="panel tool-card">
+                      <h2>{t("seal")}</h2>
+                      <p>{t("sealHelp")}</p>
+                      <button
+                        className="button secondary wide"
+                        disabled={busy}
+                        onClick={() => stampInput.current?.click()}
+                      >
+                        <Icon name="upload" size={17} />
+                        {t("uploadSeal")}
+                      </button>
+                      {stamp && (
+                        <>
+                          <small>{stamp.name}</small>
+                          <label htmlFor="seal-width">
+                            {t("sealWidth")}: {Math.round(stampWidth * 100)}%
+                          </label>
+                          <input
+                            id="seal-width"
+                            type="range"
+                            min=".05"
+                            max=".6"
+                            step=".01"
+                            value={stampWidth}
+                            disabled={busy}
+                            onChange={(e) =>
+                              setStampWidth(Number(e.target.value))
+                            }
+                          />
+                          <div className="tool-actions">
+                            <button
+                              className="button secondary"
+                              disabled={!generated || busy}
+                              onClick={() => placeStamp(0.6, 0.72)}
+                            >
+                              {t("placeSeal")}
+                            </button>
+                            <button
+                              className="button secondary"
+                              disabled={!generated || busy}
+                              onClick={removePlacement}
+                            >
+                              {t("removePlacement")}
+                            </button>
+                            <button
+                              className="button secondary"
+                              disabled={busy}
+                              onClick={() => {
+                                setStamp(undefined);
+                                setStale(true);
+                              }}
+                            >
+                              {t("removeSeal")}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                      {!generated && <small>{t("sealFirst")}</small>}
+                    </section>
+                  </div>
+                </div>
+              }
+            />
+            <Route
+              path="/tools"
+              element={
+                <>
+                  <div className="tools-grid">
+                    <section className="panel tool-card">
+                      <h2>
+                        {t("save")} / {t("reopen")}
+                      </h2>
+                      <p>{t("projectHelp")}</p>
                       <div className="tool-actions">
                         <button
-                          className="button secondary"
-                          disabled={!generated || busy}
-                          onClick={() => placeStamp(0.6, 0.72)}
+                          className="button primary"
+                          disabled={!data || busy}
+                          onClick={saveProject}
                         >
-                          {t("placeSeal")}
-                        </button>
-                        <button
-                          className="button secondary"
-                          disabled={!generated || busy}
-                          onClick={removePlacement}
-                        >
-                          {t("removePlacement")}
+                          <Icon name="save" size={17} />
+                          {t("save")}
                         </button>
                         <button
                           className="button secondary"
                           disabled={busy}
+                          onClick={() => projectInput.current?.click()}
+                        >
+                          <Icon name="upload" size={17} />
+                          {t("reopen")}
+                        </button>
+                        <button
+                          className="button secondary"
+                          disabled={!data || busy}
                           onClick={() => {
-                            setStamp(undefined);
-                            setStale(true);
+                            if (data)
+                              download(
+                                exportCSV(
+                                  data,
+                                  files,
+                                  assignments,
+                                  expiries,
+                                  language,
+                                ),
+                                `${safeFilename(data.tender.tender_id)}_Checklist.csv`,
+                                "text/csv;charset=utf-8",
+                              );
                           }}
                         >
-                          {t("removeSeal")}
+                          <Icon name="download" size={17} />
+                          {t("csv")}
                         </button>
                       </div>
-                    </>
-                  )}
-                  {!generated && <small>{t("sealFirst")}</small>}
-                </section>
-              </div>
-            </div>
-          ) : active === "tools" ? (
-            <>
-              <div className="tools-grid">
-                <section className="panel tool-card">
-                  <h2>
-                    {t("save")} / {t("reopen")}
-                  </h2>
-                  <p>{t("projectHelp")}</p>
-                  <div className="tool-actions">
-                    <button
-                      className="button primary"
-                      disabled={!data || busy}
-                      onClick={saveProject}
-                    >
-                      <Icon name="save" size={17} />
-                      {t("save")}
-                    </button>
-                    <button
-                      className="button secondary"
-                      disabled={busy}
-                      onClick={() => projectInput.current?.click()}
-                    >
-                      <Icon name="upload" size={17} />
-                      {t("reopen")}
-                    </button>
-                    <button
-                      className="button secondary"
-                      disabled={!data || busy}
-                      onClick={() => {
-                        if (data)
-                          download(
-                            exportCSV(
-                              data,
-                              files,
-                              assignments,
-                              expiries,
-                              language,
-                            ),
-                            `${safeFilename(data.tender.tender_id)}_Checklist.csv`,
-                            "text/csv;charset=utf-8",
-                          );
-                      }}
-                    >
-                      <Icon name="download" size={17} />
-                      {t("csv")}
-                    </button>
-                  </div>
-                </section>
-                <section className="panel tool-card">
-                  <h2>{t("suggestions")}</h2>
-                  <p>{t("suggestedHelp")}</p>
-                  <button
-                    className="button secondary"
-                    disabled={!data || !files.length || busy}
-                    onClick={suggest}
-                  >
-                    {t("suggest")}
-                  </button>
-                  <div className="tool-actions">
-                    <button
-                      className="button secondary"
-                      title={t("sampleResolveHelp")}
-                      disabled={!data || busy}
-                      onClick={resolveSample}
-                    >
-                      {t("sampleResolve")}
-                    </button>
-                  </div>
-                  <small>{t("sampleResolveHelp")}</small>
-                </section>
-                <section className="panel tool-card">
-                  <h2>{t("ai")}</h2>
-                  <p>{t("aiHelp")}</p>
-                  <label htmlFor="api-key">{t("apiKey")}</label>
-                  <input
-                    id="api-key"
-                    type="password"
-                    value={apiKey}
-                    autoComplete="off"
-                    spellCheck={false}
-                    disabled={busy}
-                    onChange={(e) => setApiKey(e.target.value)}
-                  />
-                  <label htmlFor="ai-model">{t("model")}</label>
-                  <input
-                    id="ai-model"
-                    type="text"
-                    value={model}
-                    disabled={busy}
-                    onChange={(e) => setModel(e.target.value)}
-                  />
-                  <small>{t("aiKeyHelp")}</small>
-                  <button
-                    className="button primary"
-                    disabled={!data || !files.length || !apiKey.trim() || busy}
-                    onClick={askAI}
-                  >
-                    {t("askAi")}
-                  </button>
-                </section>
-                <section className="panel tool-card">
-                  <h2>{t("settings")}</h2>
-                  <label className="option-label">
-                    <input
-                      type="checkbox"
-                      checked={includeIndex}
-                      disabled={busy}
-                      onChange={(e) => {
-                        setIncludeIndex(e.target.checked);
-                        setStale(true);
-                      }}
-                    />
-                    {t("index")}
-                  </label>
-                  <small>{t("indexHelp")}</small>
-                  <button
-                    className="button secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      setActive("package");
-                      setPackagePage(1);
-                    }}
-                  >
-                    {t("seal")}
-                  </button>
-                  <p style={{ marginTop: 18 }}>{t("privateHelp")}</p>
-                </section>
-              </div>
-              <div style={{ marginTop: 22 }}>{suggestionPanel}</div>
-            </>
-          ) : (
-            <div className="workspace-grid">
-              <div className="workspace-main">
-                {suggestionPanel}
-                <section className="panel checklist-panel">
-                  <div className="panel-header">
-                    <div>
-                      <h2>
-                        {t("checklist")}{" "}
-                        <span className="count-badge">
-                          {data?.requirements.length || 0}
-                        </span>
-                      </h2>
-                      <p>{t("checklistHelp")}</p>
-                    </div>
-                    <button
-                      className="button secondary"
-                      disabled={!data || !files.length || busy}
-                      onClick={suggest}
-                    >
-                      {t("suggest")}
-                    </button>
-                  </div>
-                  {!data ? (
-                    <div className="empty-state">
-                      <span className="empty-icon">
-                        <Icon name="file" size={32} />
-                      </span>
-                      <h3>{t("noRequirements")}</h3>
-                      <p>{t("emptyHelp")}</p>
+                    </section>
+                    <section className="panel tool-card">
+                      <h2>{t("suggestions")}</h2>
+                      <p>{t("suggestedHelp")}</p>
+                      <button
+                        className="button secondary"
+                        disabled={!data || !files.length || busy}
+                        onClick={suggest}
+                      >
+                        {t("suggest")}
+                      </button>
+                      <div className="tool-actions">
+                        <button
+                          className="button secondary"
+                          title={t("sampleResolveHelp")}
+                          disabled={!data || busy}
+                          onClick={resolveSample}
+                        >
+                          {t("sampleResolve")}
+                        </button>
+                      </div>
+                      <small>{t("sampleResolveHelp")}</small>
+                    </section>
+                    <section className="panel tool-card">
+                      <h2>{t("ai")}</h2>
+                      <p>{t("aiHelp")}</p>
+                      <label htmlFor="api-key">{t("apiKey")}</label>
+                      <input
+                        id="api-key"
+                        type="password"
+                        value={apiKey}
+                        autoComplete="off"
+                        spellCheck={false}
+                        disabled={busy}
+                        onChange={(e) => setApiKey(e.target.value)}
+                      />
+                      <label htmlFor="ai-model">{t("model")}</label>
+                      <input
+                        id="ai-model"
+                        type="text"
+                        value={model}
+                        disabled={busy}
+                        onChange={(e) => setModel(e.target.value)}
+                      />
+                      <small>{t("aiKeyHelp")}</small>
+                      <button
+                        className="button primary"
+                        disabled={
+                          !data || !files.length || !apiKey.trim() || busy
+                        }
+                        onClick={askAI}
+                      >
+                        {t("askAi")}
+                      </button>
+                    </section>
+                    <section className="panel tool-card">
+                      <h2>{t("settings")}</h2>
+                      <label className="option-label">
+                        <input
+                          type="checkbox"
+                          checked={includeIndex}
+                          disabled={busy}
+                          onChange={(e) => {
+                            setIncludeIndex(e.target.checked);
+                            setStale(true);
+                          }}
+                        />
+                        {t("index")}
+                      </label>
+                      <small>{t("indexHelp")}</small>
                       <button
                         className="button secondary"
                         disabled={busy}
-                        onClick={() => requirementsInput.current?.click()}
+                        onClick={() => {
+                          navigate("/package");
+                          setPackagePage(1);
+                        }}
                       >
-                        {t("import")}
+                        {t("seal")}
                       </button>
-                    </div>
-                  ) : (
-                    <div className="table-scroll">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>{t("document")}</th>
-                            <th>{t("file")}</th>
-                            <th>{t("status")}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows.map(({ requirement: r, file, status }, i) => (
-                            <tr key={r.id} data-requirement={r.id}>
-                              <td>
-                                <div className="document-name">
-                                  <span className="row-number">
-                                    {String(i + 1).padStart(2, "0")}
-                                  </span>
-                                  <div>
-                                    <strong>
-                                      {language === "en"
-                                        ? r.title_en
-                                        : r.title_bn}
-                                    </strong>
-                                    <small>
-                                      {t(r.mandatory ? "required" : "optional")}
-                                    </small>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="match-cell">
-                                <select
-                                  disabled={busy}
-                                  aria-label={`${t("file")}: ${language === "en" ? r.title_en : r.title_bn}`}
-                                  value={assignments[r.id] || ""}
-                                  onChange={(e) => match(r.id, e.target.value)}
-                                >
-                                  <option value="">{t("unmatch")}</option>
-                                  {files.map((f) => (
-                                    <option key={f.id} value={f.id}>
-                                      {f.name}
-                                    </option>
-                                  ))}
-                                </select>
-                                {r.has_expiry && file && (
-                                  <input
-                                    className="expiry-input"
-                                    type="date"
-                                    title={t("dateHint")}
-                                    aria-label={`${t("expiry")}: ${language === "en" ? r.title_en : r.title_bn}`}
-                                    disabled={busy}
-                                    value={expiries[r.id] || ""}
-                                    onChange={(e) => {
-                                      setExpiries({
-                                        ...expiries,
-                                        [r.id]: e.target.value,
-                                      });
-                                      setStale(true);
-                                    }}
-                                  />
-                                )}
-                              </td>
-                              <td>
-                                <span className={`status ${status}`}>
-                                  {t(status)}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </section>
-                <section className="panel files-panel">
-                  <div className="panel-header">
-                    <div>
-                      <h2>
-                        {t("files")}{" "}
-                        <span className="count-badge">{files.length}</span>
-                      </h2>
-                      <p>{t("fileHint")}</p>
-                    </div>
-                    <span className="size-label">
-                      {(
-                        files.reduce((n, f) => n + f.size, 0) /
-                        1024 /
-                        1024
-                      ).toFixed(1)}{" "}
-                      / 50 MB
-                    </span>
+                      <p style={{ marginTop: 18 }}>{t("privateHelp")}</p>
+                    </section>
                   </div>
-                  {!files.length ? (
-                    <div className="empty-files">{t("noFiles")}</div>
-                  ) : (
-                    <div className="file-list">
-                      {files.map((f) => (
-                        <div
-                          className={`file-item ${selected === f.id ? "selected" : ""}`}
-                          key={f.id}
-                        >
-                          <span className="pdf-icon">
-                            <Icon name="file" />
-                          </span>
-                          <button
-                            className="file-title"
-                            onClick={() => {
-                              setSelected(f.id);
-                              setPreviewPage(1);
-                            }}
-                          >
-                            <strong>{f.name}</strong>
-                            <span>
-                              {f.pages} {t("pages")} ·{" "}
-                              {(f.size / 1024).toFixed(0)} KB
-                            </span>
-                          </button>
-                          {Object.values(assignments).includes(f.id) && (
-                            <span className="assigned-tag">
-                              {t("assigned")}
-                            </span>
-                          )}
-                          {files.filter((x) => x.hash === f.hash).length >
-                            1 && (
-                            <span className="duplicate-tag">
-                              {t("duplicate")}
-                            </span>
-                          )}
-                          <button
-                            className="icon-button"
-                            aria-label={`${t("preview")} ${f.name}`}
-                            onClick={() => {
-                              setSelected(f.id);
-                              setPreviewPage(1);
-                            }}
-                          >
-                            <Icon name="eye" size={18} />
-                          </button>
-                          <button
-                            className="icon-button danger"
-                            disabled={busy}
-                            aria-label={`${t("remove")} ${f.name}`}
-                            onClick={() => removeFile(f.id)}
-                          >
-                            <Icon name="trash" size={17} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              </div>
-              <div className="workspace-side">
-                <section
-                  className="panel upload-panel"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (!busy) void upload(Array.from(e.dataTransfer.files));
-                  }}
-                >
-                  <div className="upload-symbol">
-                    <Icon name="upload" size={30} />
-                  </div>
-                  <h2>{t("uploadTitle")}</h2>
-                  <p>{t("uploadHelp")}</p>
-                  <small>{t("limits")}</small>
-                  <button
-                    className="button secondary"
-                    disabled={busy}
-                    onClick={() => filesInput.current?.click()}
-                  >
-                    <Icon name="plus" size={17} />
-                    {t("browse")}
-                  </button>
-                </section>
-                <section className="panel readiness">
-                  <div className="readiness-title">
-                    <h2>{t("progress")}</h2>
-                    <strong>{progress}%</strong>
-                  </div>
-                  <div className="progress-track">
-                    <span style={{ width: `${progress}%` }} />
-                  </div>
-                  <p>
-                    {t(
-                      !data
-                        ? "importFirst"
-                        : blocking
-                          ? "blockers"
-                          : "readyHelp",
-                    )}
-                  </p>
-                  {blocking > 0 && (
-                    <ul className="blocker-list">
-                      {blockers.map(({ requirement: r, status }) => (
-                        <li key={r.id}>
-                          {language === "en" ? r.title_en : r.title_bn}:{" "}
-                          {t(status)}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <button
-                    className="button primary wide"
-                    disabled={!data || blocking > 0 || busy}
-                    onClick={generate}
-                  >
-                    <Icon name="package" size={18} />
-                    {t("generate")}
-                  </button>
-                </section>
-                <section className="panel small-preview">
-                  <div className="panel-header">
-                    <h2>{t("preview")}</h2>
-                    {selectedFile && (
-                      <span className="count-badge">
-                        {selectedFile.pages} {t("pages")}
-                      </span>
-                    )}
-                  </div>
-                  {selectedFile && (
-                    <p className="preview-name">{selectedFile.name}</p>
-                  )}
-                  <Preview
-                    bytes={selectedFile?.bytes}
-                    language={language}
-                    page={previewPage}
-                    onPage={setPreviewPage}
-                  />
-                </section>
-              </div>
-            </div>
-          )}
+                  <div style={{ marginTop: 22 }}>{suggestionPanel}</div>
+                </>
+              }
+            />
+            <Route path="*" element={<Navigate to="/overview" replace />} />
+          </Routes>
         </main>
         <footer className="app-footer">
           <span>TenderDesk · AI DevFest 2026</span>

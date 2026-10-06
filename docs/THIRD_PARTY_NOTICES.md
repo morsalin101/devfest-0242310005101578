@@ -5,6 +5,7 @@ The application uses these open-source libraries, installed through npm:
 | Component | License | Source |
 | --- | --- | --- |
 | React / React DOM | MIT | https://github.com/facebook/react |
+| React Router | MIT | https://github.com/remix-run/react-router |
 | Vite / React plugin | MIT | https://github.com/vitejs/vite |
 | pdf-lib | MIT | https://github.com/Hopding/pdf-lib |
 | PDF.js / pdfjs-dist | Apache-2.0 | https://github.com/mozilla/pdf.js |
