@@ -8,9 +8,9 @@ A professional React + Vite + TypeScript dashboard that checks and combines tend
 
 **Repository:** https://github.com/morsalin101/devfest-0242310005101578
 
-**Public HTTPS live URL:** awaiting participant deployment to Vercel.
+**Public HTTPS live URL:** [TenderDesk](https://devfest-0242310005101578-src-gray.vercel.app/).
 
-This is a practice implementation, not a claim of contest-time eligibility. The participant will deploy later.
+This is a practice implementation, not a claim of contest-time eligibility. Deployed by the participant on Vercel.
 
 ## Run and build
 
@@ -78,15 +78,15 @@ The 42 unit tests cover validation, expiry boundaries, duplicate assignments, PD
 
 `npm run test:e2e` requires installed Google Chrome. It starts a temporary Vite preview at `127.0.0.1:4173`, then stops it. Set `VERIFY_BASE_URL` only when using your own existing preview server. Temporary downloads are ignored under `.test-results/`.
 
-## Deploy later to Vercel
+## Vercel deployment
 
 1. Import this GitHub repository into your Vercel account.
 2. Select the **Vite** framework preset and the repository root.
 3. Set the build command to `npm run build` and output directory to `dist`.
 4. Deploy the final commit without adding a backend or API-key environment variable.
-5. Replace the awaiting-deployment line above with the actual public HTTPS URL.
+5. Keep the public HTTPS live URL above updated if the deployment address changes.
 
-The dashboard uses internal views instead of URL routes, so no SPA route rewrite is required. Deployment is intentionally left to the participant. See [Vite's static deployment guide](https://vite.dev/guide/static-deploy.html).
+The dashboard uses internal views instead of URL routes, so no SPA route rewrite is required. Deployment is managed by the participant. See [Vite's static deployment guide](https://vite.dev/guide/static-deploy.html).
 
 ## Known limitations
 
