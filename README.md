@@ -82,7 +82,7 @@ The 42 unit tests cover validation, expiry boundaries, duplicate assignments, PD
 
 1. Import this GitHub repository into your Vercel account.
 2. Select the **Vite** framework preset and the repository root.
-3. Set the build command to `npm run build` and output directory to `dist`.
+3. Set the build command to `npm run build` and output directory to `dist`. The repository also sets these values and the Vite framework in `vercel.json`, overriding a stale `build` output directory in Project Settings.
 4. Deploy the final commit without adding a backend or API-key environment variable.
 5. Keep the public HTTPS live URL above updated if the deployment address changes.
 
