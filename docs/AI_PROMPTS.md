@@ -7,3 +7,7 @@ your task is to first check the pdf then read all the statements then create a r
 ## Implementation instruction — stage 1
 
 Add the Vite project, complete dashboard layout, requirements import, translations, PDF validation/previews, sample loading, and MIT license. Include your full original prompt verbatim in the commit message.
+
+## Implementation instruction - stage 2
+
+Add matching, duplicate enforcement, expiry/status rules, generation blocking, cover, ordered merging, protected footers, and download. Include the feature prompt actually used.

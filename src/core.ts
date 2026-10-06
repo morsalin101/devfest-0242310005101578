@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import type { Requirements, UploadedPDF } from './types';
+import type { Requirements, UploadedPDF, Requirement, Assignments, Expiries, Status } from './types';
 export const MAX_FILES = 30;
 export const MAX_BYTES = 50 * 1024 * 1024;
 export class InputError extends Error { constructor(public code: 'jsonError'|'notPdf'|'damaged'|'encrypted'|'tooMany'|'tooLarge'|'matchConflict'|'projectError') { super(code); } }
@@ -39,3 +39,28 @@ export function download(bytes: Uint8Array | string, name: string, type: string)
  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export const sampleFiles = ['experience_cert.pdf','trade_license_2026.pdf','01_financial_proposal.pdf','trade_license_2025.pdf','03_tin_certificate.pdf','scan_0042.pdf','experience_cert (1).pdf','bank_solvency.pdf','02_technical_proposal.pdf','04_vat_certificate.pdf'];
+
+export function getStatus(requirement: Requirement, file: UploadedPDF | undefined, expiry: string | undefined, deadline: string): Status {
+ if (!file) return requirement.mandatory ? 'missing' : 'notProvided';
+ if (requirement.has_expiry) {
+  if (!validDate(expiry)) return 'dateNeeded';
+  if (expiry < deadline) return 'expired';
+ }
+ return 'ok';
+}
+export function checklist(data: Requirements, files: UploadedPDF[], assignments: Assignments, expiries: Expiries) {
+ return data.requirements.map(requirement => {
+  const file=files.find(f=>f.id===assignments[requirement.id]);
+  return {requirement,file,status:getStatus(requirement,file,expiries[requirement.id],data.tender.submission_deadline)};
+ });
+}
+export function isBlocking(status: Status) { return status==='missing' || status==='dateNeeded' || status==='expired'; }
+export function assignFile(requirementId: string, fileId: string, assignments: Assignments, files: UploadedPDF[]): Assignments {
+ const next={...assignments};delete next[requirementId];
+ if (!fileId) return next;
+ const file=files.find(f=>f.id===fileId);
+ if (!file) throw new InputError('matchConflict');
+ for (const id of Object.values(next)) if(files.find(f=>f.id===id)?.hash===file.hash) throw new InputError('matchConflict');
+ next[requirementId]=fileId;return next;
+}
+export function safeFilename(id: string) { return id.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_'); }
