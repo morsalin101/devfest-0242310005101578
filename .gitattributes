@@ -6,3 +6,12 @@
 *.png binary
 *.zip binary
 *.ttf binary
+
+# Keep source and documentation line endings consistent across platforms.
+*.ts text eol=lf
+*.tsx text eol=lf
+*.mjs text eol=lf
+*.css text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.html text eol=lf
